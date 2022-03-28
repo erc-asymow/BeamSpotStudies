@@ -1,4 +1,4 @@
-# ASYMOW
+# BeamSpotStudies
 
 ## Dump BeamSpot infos from DB:
 ```
