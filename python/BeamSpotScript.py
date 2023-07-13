@@ -275,11 +275,29 @@ def make_tree_avg(tag='',era=''):
     f.Close()
     return
 
-def make_pdfs(tag='',era='', useMCtruth=False):
+def make_pdfs(tag='',era='', useMCtruth=False, MCPlot=False):
     print 'make_pdfs()...'
 
     zbins, zmin, zmax = 55, -15., 15.
     fitmc = ROOT.TF1('fitmc', '[0]/TMath::Sqrt(2*TMath::Pi())/[1]*TMath::Exp( -0.5*(x-[2])*(x-[2])/[1]/[1] )', zmin, zmax)    
+    if useMCtruth and MCPlot:
+        if era=='2016':
+            mcf = '../test/NanoV9MC2016_testDY.root'
+        if era=='2017':
+            mcf = '../test/NanoV9MC2017_testDY.root'
+        if era=='2018':
+            mcf = '../test/NanoV9MC2018_testDY.root' 
+        print 'Using root file for the Fit to Make MC Plot: '+mcf
+        mc = ROOT.TFile(mcf,'READ')
+        tmc = mc.Get('Events')
+        hmc = ROOT.TH1F('mc_vtxZ','', zbins, zmin, zmax)
+        tmc.Draw('PV_z>>mc_vtxZ')
+        fitmc.SetParameter(0, hmc.Integral())
+        fitmc.SetParameter(1, hmc.GetRMS())
+        fitmc.SetParameter(2, hmc.GetMean())
+        hmc.Fit(fitmc, 'R')
+        fitmc.SetParameter(0, 1.0)
+        hmc.Scale(1./hmc.Integral())
 
     #https://github.com/cms-sw/cmssw/blob/master/IOMC/EventVertexGenerators/python/VtxSmearedParameters_cfi.py#L590
     if useMCtruth:
@@ -295,18 +313,6 @@ def make_pdfs(tag='',era='', useMCtruth=False):
         fitmc.SetParameter(0, 1.0)
         fitmc.SetParameter(1,Sigmaz)
         fitmc.SetParameter(2,z)
-    else:
-        print 'Using root file for the Fit: '
-        mc = ROOT.TFile('./NanoAOD.root','READ')
-        tmc = mc.Get('Events')
-        hmc = ROOT.TH1F('mc_vtxZ','', zbins, zmin, zmax)
-        tmc.Draw('PV_z>>mc_vtxZ')
-        fitmc.SetParameter(0, hmc.Integral())
-        fitmc.SetParameter(1, hmc.GetRMS())
-        fitmc.SetParameter(2, hmc.GetMean())
-        hmc.Fit(fitmc, 'R')
-        fitmc.SetParameter(0, 1.0)
-        hmc.Scale(1./hmc.Integral())
     f = ROOT.TFile('out_'+era+tag+'.root','READ')
     tree = f.Get('tree')
 
@@ -357,14 +363,14 @@ def make_pdfs(tag='',era='', useMCtruth=False):
         v.Write()
     for k,v in h2dict.items():
         v.Write()
-    fitmc.Draw()
-    fitmc.Write()
-    if not useMCtruth:
+    if useMCtruth and MCPlot:
         hmc.Write() 
+    fitmc.Draw()
+    fitmc.Write("FitFunction")
     fout.Close()
 
 
-def plot(tag,era='',useMCtruth=False):    
+def plot(tag,era='',useMCtruth=False, MCPlot=False):    
     from ROOT import kRed, kDashed
     print 'plot()...'
     fin = ROOT.TFile('ratio_'+era+tag+'.root', 'READ')
@@ -372,13 +378,13 @@ def plot(tag,era='',useMCtruth=False):
     c = ROOT.TCanvas()
     leg = ROOT.TLegend(0.7,0.5,0.9,0.9)
     leg.SetHeader('Average pileup')
-    if not useMCtruth: 
+    if useMCtruth and MCPlot: 
         hmc = fin.Get('mc_vtxZ')
     h0 = None
     for ik,k in enumerate(keys):
         h = fin.Get('ratio_'+k)
         # compute mean and RMS of weight
-        if not useMCtruth:
+        if useMCtruth and MCPlot:
             mu,rms2 = 0., 0.        
             for ib in range(1, hmc.GetNbinsX()+1):            
                 mu += h.GetBinContent(ib)*hmc.GetBinContent(ib)
@@ -389,7 +395,7 @@ def plot(tag,era='',useMCtruth=False):
         h.SetLineColor(ik+1)
         h.SetLineWidth(2)
         h.SetStats(0)
-        leg.AddEntry(h, '['+k.split('_')[0]+', '+k.split('_')[1]+') #Delta='+'{:.1f}'.format(rms2*0.5*100)+'%', "L") if not useMCtruth else leg.AddEntry(h, '['+k.split('_')[0]+', '+k.split('_')[1])
+        leg.AddEntry(h, '['+k.split('_')[0]+', '+k.split('_')[1]+') #Delta='+'{:.1f}'.format(rms2*0.5*100)+'%'+']', "L") if useMCtruth and MCPlot else leg.AddEntry(h, '['+k.split('_')[0]+', '+k.split('_')[1]+']')
         if ik==0: 
             h0 = h
             h.SetLineWidth(4)
@@ -442,8 +448,8 @@ if makeTree:
 #check()
 #make_tree_avg(tag,era)
 if makePdf:
-    make_pdfs(tag=tag,era=era, useMCtruth=True)
+    make_pdfs(tag=tag,era=era, useMCtruth=True, MCPlot=True)
 if makePlot:
-    plot(tag,era, useMCtruth=True)
+    plot(tag,era, useMCtruth=True, MCPlot=True)
 if makePlot2:
     plot2D(tag,era)
