@@ -13,6 +13,7 @@ using the unpack functions. E.g.:
 ```
 root[0] #include "CondFormats/Common/interface/TimeConversions.h"
 root[1] cond::time::pack({284044, 30})
+or use: ./makeIOV.sh 315257 1 325172 4
 ```
 
 ## Produce a brilcalc output file containing a summary of lumi and avg pileup LS-by-LS:
