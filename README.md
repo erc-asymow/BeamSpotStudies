@@ -22,3 +22,6 @@ pip install --user --upgrade brilws
 ~/.local/bin/brilcalc lumi --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_PHYSICS.json -u /fb -i /afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/Legacy_2016/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt --byls --minBiasXsec 69200 --xingTr 0.1 > 2016_brilcalc_byls_69200ub.txt
 # FIXME: brilcalc supports the -o option to output a csv file directly
 ```
+## Check the mean value of weight distribution: 
+```
+Run root -l 'test.C("era")' era=2017, 2018
