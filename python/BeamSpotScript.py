@@ -55,10 +55,12 @@ Run2016F_nonHIPM = ['278769', '278801', '278802', '278803', '278804', '278805', 
 Run2016G_first   = ['278820']
 
 
-def reduce_summary():
+def reduce_summary(era =''):
     print 'reduce_summary()...'
-    fout = open('../test/summary_2016_reduced.csv', 'w')
-    bs_file = open('../test/summary_2016.txt', 'r')
+    #fout = open('../test/summary_2016_reduced.csv', 'w')
+    fout = open('../test/summary_'+era+'_reduced.csv', 'w')
+    #bs_file = open('../test/summary_2016.txt', 'r')
+    bs_file = open('../test/summary_'+era+'.txt', 'r')
     bs_lines = [ x.strip() for x in bs_file.readlines() ]
     for ib,b in enumerate(bs_lines):
         if 'hash' in b:
@@ -78,7 +80,7 @@ def reduce_summary():
 
 def check_era(run,era):
     is_postVFP = (int(run)>=int(Run2016G_first[0]) or (run in Run2016F_nonHIPM))
-    if era=='2016': 
+    if era=='2016' or era=='2017' or era=='2018': 
         return True
     elif era=='2016preVFP' and is_postVFP: return False
     elif era=='2016postVFP' and not is_postVFP: return False
@@ -87,7 +89,8 @@ def check_era(run,era):
 def reduce_brilcalc(tag='', era=''):
     print 'reduce_brilcalc()...'
     fout = open('../test/'+era+'_brilcalc_byls_reduced'+tag+'.csv', 'w')
-    ls_file = open('../test/2016_brilcalc_byls'+tag+'.txt', 'r')
+    #ls_file = open('../test/2016_brilcalc_byls'+tag+'.txt', 'r')
+    ls_file = open('../test/'+era+'_brilcalc_byls'+tag+'.txt', 'r')
     ls_lines = [ x.strip() for x in ls_file.readlines()]
     for l in ls_lines:
         #print l
@@ -107,7 +110,8 @@ def reduce_brilcalc(tag='', era=''):
 
 def reduce_match(tag='',era=''):
     print 'reduce_match()...'
-    with open('../test/summary_2016_reduced.csv', 'rb') as master:
+    #with open('../test/summary_2016_reduced.csv', 'rb') as master:
+    with open('../test/summary_'+era+'_reduced.csv', 'rb') as master:
         master_indices = dict( (r[0]+'_'+r[1], [ r[2],r[3],   #X0
                                                  r[4],r[5],   #Y0
                                                  r[6],r[7],   #Z0
@@ -174,7 +178,8 @@ def reduce_final(tag='',era=''):
 
 def check(tag='',era=''):
     ls_file = open('../test/'+era+'_brilcalc_byls_matched'+tag+'.csv', 'rb')
-    bs_file = open('../test/summary_2016_reduced.csv', 'rb')
+    #bs_file = open('../test/summary_2016_reduced.csv', 'rb')
+    bs_file = open('../test/summary_'+era+'_reduced.csv', 'rb')
     ls_lines = [ x.strip() for x in ls_file.readlines() ]
     bs_lines = [ x.strip() for x in bs_file.readlines() ]
     unmatched = 0
@@ -270,28 +275,44 @@ def make_tree_avg(tag='',era=''):
     f.Close()
     return
 
-def make_pdfs(tag='',era='', useMCtruth=False):
+def make_pdfs(tag='',era='', useMCtruth=False, MCPlot=False):
     print 'make_pdfs()...'
 
     zbins, zmin, zmax = 55, -15., 15.
-
-    mc = ROOT.TFile('./NanoAOD.root','READ')
-    tmc = mc.Get('demo/Events')
-    hmc = ROOT.TH1F('mc_vtxZ','', zbins, zmin, zmax)
-    tmc.Draw('GenVertex_z>>mc_vtxZ') 
     fitmc = ROOT.TF1('fitmc', '[0]/TMath::Sqrt(2*TMath::Pi())/[1]*TMath::Exp( -0.5*(x-[2])*(x-[2])/[1]/[1] )', zmin, zmax)    
-    fitmc.SetParameter(0, hmc.Integral())
-    fitmc.SetParameter(1, hmc.GetRMS())
-    fitmc.SetParameter(2, hmc.GetMean())
-    hmc.Fit(fitmc, 'R')
-    fitmc.SetParameter(0, 1.0)
-    hmc.Scale(1./hmc.Integral())
+    if useMCtruth and MCPlot:
+        if era=='2016':
+            mcf = '../test/NanoV9MC2016_testDY.root'
+        if era=='2017':
+            mcf = '../test/NanoV9MC2017_testDY.root'
+        if era=='2018':
+            mcf = '../test/NanoV9MC2018_testDY.root' 
+        print 'Using root file for the Fit to Make MC Plot: '+mcf
+        mc = ROOT.TFile(mcf,'READ')
+        tmc = mc.Get('Events')
+        hmc = ROOT.TH1F('mc_vtxZ','', zbins, zmin, zmax)
+        tmc.Draw('PV_z>>mc_vtxZ')
+        fitmc.SetParameter(0, hmc.Integral())
+        fitmc.SetParameter(1, hmc.GetRMS())
+        fitmc.SetParameter(2, hmc.GetMean())
+        hmc.Fit(fitmc, 'R')
+        fitmc.SetParameter(0, 1.0)
+        hmc.Scale(1./hmc.Integral())
 
+    #https://github.com/cms-sw/cmssw/blob/master/IOMC/EventVertexGenerators/python/VtxSmearedParameters_cfi.py#L590
     if useMCtruth:
-        print "Using MC truth parameters for 2016"
-        fitmc.SetParameter(1,3.65)
-        fitmc.SetParameter(2,0.9315)
-
+        if '2016' in era:
+            Sigmaz, z = 3.65, 0.9315
+        elif '2017' in era:
+            Sigmaz, z = 3.5, 0.82054
+        elif '2018' in era:  
+            Sigmaz, z = 3.5, 0.035748
+        else:
+            print "Check Smearing era, Parameters"
+        print("Using MC truth parameters for: ",era," : Sigmaz = ",Sigmaz, " : Z = ", z," ==")
+        fitmc.SetParameter(0, 1.0)
+        fitmc.SetParameter(1,Sigmaz)
+        fitmc.SetParameter(2,z)
     f = ROOT.TFile('out_'+era+tag+'.root','READ')
     tree = f.Get('tree')
 
@@ -342,11 +363,14 @@ def make_pdfs(tag='',era='', useMCtruth=False):
         v.Write()
     for k,v in h2dict.items():
         v.Write()
-    hmc.Write()
+    if useMCtruth and MCPlot:
+        hmc.Write() 
+    fitmc.Draw()
+    fitmc.Write("FitFunction")
     fout.Close()
 
 
-def plot(tag,era=''):    
+def plot(tag,era='',useMCtruth=False, MCPlot=False):    
     from ROOT import kRed, kDashed
     print 'plot()...'
     fin = ROOT.TFile('ratio_'+era+tag+'.root', 'READ')
@@ -354,22 +378,24 @@ def plot(tag,era=''):
     c = ROOT.TCanvas()
     leg = ROOT.TLegend(0.7,0.5,0.9,0.9)
     leg.SetHeader('Average pileup')
-    hmc = fin.Get('mc_vtxZ')
+    if useMCtruth and MCPlot: 
+        hmc = fin.Get('mc_vtxZ')
     h0 = None
     for ik,k in enumerate(keys):
         h = fin.Get('ratio_'+k)
         # compute mean and RMS of weight
-        mu,rms2 = 0., 0.        
-        for ib in range(1, hmc.GetNbinsX()+1):            
-            mu += h.GetBinContent(ib)*hmc.GetBinContent(ib)
-        for ib in range(1, hmc.GetNbinsX()+1):            
-            rms2 += ((h.GetBinContent(ib)-mu)**2)*hmc.GetBinContent(ib)          
-        print mu, math.sqrt(rms2)
+        if useMCtruth and MCPlot:
+            mu,rms2 = 0., 0.        
+            for ib in range(1, hmc.GetNbinsX()+1):            
+                mu += h.GetBinContent(ib)*hmc.GetBinContent(ib)
+            for ib in range(1, hmc.GetNbinsX()+1):            
+                rms2 += ((h.GetBinContent(ib)-mu)**2)*hmc.GetBinContent(ib)          
+            print mu, math.sqrt(rms2)
         
         h.SetLineColor(ik+1)
         h.SetLineWidth(2)
         h.SetStats(0)
-        leg.AddEntry(h, '['+k.split('_')[0]+', '+k.split('_')[1]+') #Delta='+'{:.1f}'.format(rms2*0.5*100)+'%', "L")
+        leg.AddEntry(h, '['+k.split('_')[0]+', '+k.split('_')[1]+') #Delta='+'{:.1f}'.format(rms2*0.5*100)+'%'+']', "L") if useMCtruth and MCPlot else leg.AddEntry(h, '['+k.split('_')[0]+', '+k.split('_')[1]+']')
         if ik==0: 
             h0 = h
             h.SetLineWidth(4)
@@ -404,13 +430,13 @@ def plot2D(tag,era=''):
         h2.SetTitle(era)
         c.cd()
         h2.Draw('COLZ')
-        c.SaveAs(k+'_'+era+'.png')
+        c.SaveAs(k+'_'+era+tag+'.png')
     fin.Close()
     return
     
 
 if reduceS:
-    reduce_summary()
+    reduce_summary(era)
 if reduceB:
     reduce_brilcalc(tag,era)
 if reduceM:
@@ -422,8 +448,8 @@ if makeTree:
 #check()
 #make_tree_avg(tag,era)
 if makePdf:
-    make_pdfs(tag=tag,era=era, useMCtruth=True)
+    make_pdfs(tag=tag,era=era, useMCtruth=True, MCPlot=True)
 if makePlot:
-    plot(tag,era)
+    plot(tag,era, useMCtruth=True, MCPlot=True)
 if makePlot2:
     plot2D(tag,era)

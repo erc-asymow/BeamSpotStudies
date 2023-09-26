@@ -12,13 +12,17 @@ options.register('inputTag',
                  "output tag name")
 options.register('startIOV',
                  #1406713458589700, # default value
-                 1173204676640769,
+                 #1173204676640769, #For 2016
+                 1275820035276812,  #For 2017
+                 #1354018504835073, #For 2017
                  VarParsing.VarParsing.multiplicity.singleton, # singleton or list
                  VarParsing.VarParsing.varType.int, # string, int, or float
                  "location of the input data")
 options.register('endIOV',
                  #1406876667347162, # default value
-                 1219959690625054,
+                 #1219959690625054, #For 2016
+                 1316235677532161,  #For 2017
+                 #1396603105574916, #For 2018 
                  VarParsing.VarParsing.multiplicity.singleton, # singleton or list
                  VarParsing.VarParsing.varType.int, # string, int, or float
                  "location of the input data")
@@ -44,7 +48,7 @@ process.load("CondTools.BeamSpot.BeamSpotRcdPrinter_cfi")
 process.BeamSpotRcdPrinter.tagName  = options.inputTag
 process.BeamSpotRcdPrinter.startIOV = options.startIOV
 process.BeamSpotRcdPrinter.endIOV   = options.endIOV
-process.BeamSpotRcdPrinter.output   = "summary.txt"
+process.BeamSpotRcdPrinter.output   = "../test/summary_2017.txt"
 
 ### 2018 Prompt
 #process.BeamSpotRcdPrinter.tagName  = "BeamSpotObjects_PCL_byLumi_v0_prompt"
